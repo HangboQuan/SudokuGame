@@ -39,4 +39,9 @@ public class SudokuGenerateServiceTest {
         }
     }
 
+    @Test
+    public void testGenerateNewGame() {
+        sudokuGenerateService.generateNewGame("medium");
+    }
+
 }

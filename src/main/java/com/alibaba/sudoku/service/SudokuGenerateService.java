@@ -1,12 +1,20 @@
 package com.alibaba.sudoku.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -17,6 +25,26 @@ public class SudokuGenerateService {
      * 数独解的数量（保证唯一解）
      */
     public static int uniqueSolve = 0;
+    public static List<String> sudokuGameList = null;
+
+    static {
+        final String resourceName = "sudoku_solutions.txt";
+        try (InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourceName)) {
+            if (is == null) {
+                logger.warn("resource {} not found on classpath", resourceName);
+                sudokuGameList = Collections.emptyList();
+            }
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                sudokuGameList = br.lines()
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.toList());
+                logger.info("loaded {} sudoku solutions from {}", sudokuGameList.size(), resourceName);
+            }
+        } catch (Exception e) {
+            logger.error("failed to load sudoku solutions from {}", resourceName, e);
+        }
+    }
 
     /**
      * 生成数独面板
@@ -61,29 +89,46 @@ public class SudokuGenerateService {
 
         // 使用一个有效的数独模板
         // todo: 为了耗时体验，将这块可以作为离线维护，或者缓存起来。否则每次去读，可能会导致性能问题
-        int[][] result = {
-                {1, 2, 3, 4, 5, 6, 7, 8, 9},
-                {4, 5, 6, 7, 8, 9, 1, 2, 3},
-                {7, 8, 9, 1, 2, 3, 4, 5, 6},
-                {2, 1, 4, 3, 6, 5, 8, 9, 7},
-                {3, 7, 8, 9, 1, 2, 6, 4, 5},
-                {6, 9, 5, 8, 7, 4, 3, 1, 2},
-                {5, 4, 1, 2, 3, 7, 9, 6, 8},
-                {9, 6, 7, 5, 4, 8, 2, 3, 1},
-                {8, 3, 2, 6, 9, 1, 5, 7, 4}
-        };
-
-        int[][] game = new int[9][9];
-        for (int i = 0; i < 9; i++) {
-            System.arraycopy(result[i], 0, game[i], 0, 9);
+        String sudokuStr = sudokuGameList.get(random.nextInt(sudokuGameList.size()));
+        if (StringUtils.isBlank(sudokuStr) || sudokuStr.length() != 81) {
+            logger.error("invalid sudoku string from resource: {}", sudokuStr);
+            return null;
         }
+
+        int[][] temp = new int[9][9];
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                temp[i][j] = Character.getNumericValue(sudokuStr.charAt(i * 9 + j));
+            }
+        }
+
+        for (int[] row : temp) {
+            System.out.println(Arrays.toString(row));
+        }
+
+//        int[][] result = {
+//                {1, 2, 3, 4, 5, 6, 7, 8, 9},
+//                {4, 5, 6, 7, 8, 9, 1, 2, 3},
+//                {7, 8, 9, 1, 2, 3, 4, 5, 6},
+//                {2, 1, 4, 3, 6, 5, 8, 9, 7},
+//                {3, 7, 8, 9, 1, 2, 6, 4, 5},
+//                {6, 9, 5, 8, 7, 4, 3, 1, 2},
+//                {5, 4, 1, 2, 3, 7, 9, 6, 8},
+//                {9, 6, 7, 5, 4, 8, 2, 3, 1},
+//                {8, 3, 2, 6, 9, 1, 5, 7, 4}
+//        };
+//
+//        int[][] game = new int[9][9];
+//        for (int i = 0; i < 9; i++) {
+//            System.arraycopy(result[i], 0, game[i], 0, 9);
+//        }
         logger.info("threshold:{}", threshold);
         // 生成游戏（挖洞）
-        generateGame(result, threshold);
-        for (int[] a : result) {
+        generateGame(temp, threshold);
+        for (int[] a : temp) {
             System.out.println(Arrays.toString(a));
         }
-        return result;
+        return temp;
     }
 
 
